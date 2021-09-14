@@ -1,31 +1,67 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class VRLocomotion : MonoBehaviour
 {
-    public string verticalAxis;
-    public string horizontalAxis;
-    public string triggerButton;
+    [Header("Input")]
+    public hands hand;
+    
 
+    [Header("Base XR")]
     public Transform XRRig;
     public Transform headCamera;
 
+    [Header("Movement")]
     public bool CanSmoothMove;
     public bool CanSmoothRotate;
     public float movementSpeed = 10f;
     public float smoothRotateSpeed = 10f;
 
+    [Header("Line")]
+    public Vector3 curveHeight;
+    public int lineResolution = 20;
     public Transform reticle;
 
-    private LineRenderer line;
+    [Header("Fader")]
+    public RawImage fader;
+    public float fadeTime = 0.2f;
 
+    
+    //-----------------------------------
+
+    private LineRenderer line;
     private RaycastHit hit;
+    private bool teleportLock;
+    private string verticalAxis;
+    private string horizontalAxis;
+    private string triggerButton;
+
+
+    public enum hands
+    {
+        Left,
+        Right
+    }
+
+    private void Awake()
+    {
+        verticalAxis = "XRI_" + hand +  "_Primary2DAxis_Vertical";
+        horizontalAxis = "XRI_" + hand + "_Primary2DAxis_Horizontal";
+        triggerButton = "XRI_" + hand + "_TriggerButton";
+    }
+
 
     // Start is called before the first frame update
     void Start()
     {
+
         line = GetComponent<LineRenderer>();
+        line.positionCount = lineResolution;
+
+        fader.color = Color.clear;
+        teleportLock = false;
     }
 
     // Update is called once per frame
@@ -62,6 +98,9 @@ public class VRLocomotion : MonoBehaviour
 
     void Teleport()
     {
+        
+
+
         Ray ray = new Ray(transform.position, transform.forward);
 
         if (Physics.Raycast(ray, out RaycastHit hit))
@@ -70,8 +109,8 @@ public class VRLocomotion : MonoBehaviour
 
             line.enabled = true;
             reticle.gameObject.SetActive(true);
-            reticle.position = hit.point;
-            reticle.transform.up = hit.normal;
+
+
 
 
             if (validTarget)
@@ -85,12 +124,47 @@ public class VRLocomotion : MonoBehaviour
                 line.endColor = Color.yellow;
             }
 
-            line.SetPosition(0, transform.position);
-            line.SetPosition(1, hit.point);
+            Vector3 startPoint = transform.position;
+            Vector3 endPoint = hit.point;
+            Vector3 midPoint = ((endPoint - startPoint) / 2) + startPoint; // calculate the midpoint
+            midPoint += curveHeight;
 
-            if (validTarget && Input.GetButtonDown(triggerButton))
+
+
+            Vector3 desiredPosition = endPoint - reticle.transform.position;
+            Vector3 smoothVectoDesired = (desiredPosition / 0.2f) * Time.deltaTime;
+            Vector3 reticleEndpoint = reticle.transform.position + smoothVectoDesired;
+
+            reticle.position = reticleEndpoint;
+
+            reticle.transform.up = hit.normal;
+
+
+            // Straght Line with 2 points
+            //line.SetPosition(0, transform.position);
+            //line.SetPosition(1, hit.point);
+
+
+            // Set line positions based on the lerp values
+            for (int i=0; i < lineResolution; i++)
             {
-                XRRig.position = hit.point;
+                float t = i / (float)lineResolution;
+
+                Vector3 startToMid = Vector3.Lerp(startPoint, midPoint, t);
+                Vector3 midToEnd = Vector3.Lerp(midPoint, reticleEndpoint, t);
+
+                //curve position
+                Vector3 curvePosition = Vector3.Lerp(startToMid, midToEnd, t);
+
+                line.SetPosition(i, curvePosition);
+
+            }
+
+
+
+            if (!teleportLock && validTarget && Input.GetButtonDown(triggerButton))
+            {
+                StartCoroutine(FadeTeleport(hit.point));
             }
 
         }
@@ -100,4 +174,45 @@ public class VRLocomotion : MonoBehaviour
             line.enabled = false;
         }
     }
+
+
+    private IEnumerator FadeTeleport(Vector3 newPosition)
+    {
+        teleportLock = true;
+
+        float timer = 0f;
+        
+        // Fade in
+        while(timer < fadeTime)
+        {
+            fader.color = Color.Lerp(Color.clear, Color.black, timer);
+            yield return new WaitForEndOfFrame();
+
+            timer += Time.deltaTime;
+        }
+
+        fader.color = Color.black;
+
+        // Teleport
+        XRRig.transform.position = newPosition;
+
+        yield return new WaitForSeconds(fadeTime);
+
+        timer = 0f;
+
+        // Fade out
+        while (timer < fadeTime)
+        {
+            fader.color = Color.Lerp(Color.black, Color.clear, timer);
+            yield return new WaitForEndOfFrame();
+
+            timer += Time.deltaTime;
+        }
+
+        fader.color = Color.clear;
+
+        teleportLock = false;
+
+    }
+
 }

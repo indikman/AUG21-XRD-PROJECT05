@@ -44,6 +44,21 @@ public class GrabbableObject : MonoBehaviour
         body.isKinematic = false;
     }
 
+    public virtual void OnTriggerStart()
+    {
+
+    }
+
+    public virtual void OnTrigger()
+    {
+
+    }
+
+    public virtual void OnTriggerEnd()
+    {
+
+    }
+
 
     // Update is called once per frame
     void Update()

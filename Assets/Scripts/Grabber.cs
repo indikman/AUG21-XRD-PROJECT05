@@ -7,6 +7,7 @@ public class Grabber : MonoBehaviour
     public Animator handAnimator;
 
     public string gripButton;
+    public string triggerButton;
 
     private GrabbableObject hoveredObject;
     private GrabbableObject grabbedObject;
@@ -66,5 +67,31 @@ public class Grabber : MonoBehaviour
                 grabbedObject = null;
             }
         }
+
+
+        if (Input.GetButtonDown(triggerButton))
+        {
+            if(grabbedObject != null)
+            {
+                grabbedObject.OnTriggerStart();
+            }
+        }
+
+        if (Input.GetButton(triggerButton))
+        {
+            if (grabbedObject != null)
+            {
+                grabbedObject.OnTrigger();
+            }
+        }
+
+        if (Input.GetButtonUp(triggerButton))
+        {
+            if (grabbedObject != null)
+            {
+                grabbedObject.OnTriggerEnd();
+            }
+        }
+
     }
 }

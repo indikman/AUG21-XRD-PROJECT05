@@ -6,6 +6,7 @@ TagManager:
   tags:
   - teleportable
   - paint
+  - hand
   layers:
   - Default
   - TransparentFX
